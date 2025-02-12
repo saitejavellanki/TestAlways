@@ -14,30 +14,31 @@ pipeline {
         
         stage('Run Container') {
             steps {
-                // Use proper port mapping (80 is standard HTTP port)
                 bat """
                     docker run -d ^
                         --name my-container ^
-                        -p 8089:80 ^
-                        ${DOCKER_IMAGE}
+                        ${DOCKER_IMAGE} ^
+                        java Hello
                 """
             }
         }
         
-        stage('Test') {
+        stage('View Output') {
             steps {
-                // Use PowerShell's Start-Sleep instead of timeout command
-                bat 'powershell -Command "Start-Sleep -Seconds 10"'
-                
-                // Verify container is running and healthy
+                // Wait for the container to start and capture its logs
                 bat '''
-                    docker ps --filter name=my-container --format "{{.Status}}"
-                    
-                    REM Test if service is responding
-                    powershell -Command "try { ^
-                        $response = Invoke-WebRequest -Uri http://localhost:8085 -UseBasicParsing; ^
-                        if ($response.StatusCode -eq 200) { exit 0 } else { exit 1 } ^
-                    } catch { exit 1 }"
+                    timeout /t 5
+                    docker logs my-container
+                '''
+                
+                // Verify container executed successfully
+                bat '''
+                    FOR /F "tokens=* USEBACKQ" %%F IN (`docker inspect -f {{.State.ExitCode}} my-container`) DO (
+                        IF NOT %%F==0 (
+                            echo Container failed with exit code %%F
+                            exit /b 1
+                        )
+                    )
                 '''
             }
         }
