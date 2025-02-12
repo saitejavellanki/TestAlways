@@ -1,0 +1,48 @@
+pipeline {
+    agent any
+    
+    environment {
+        // Replace this with your Docker Hub image name
+        DOCKER_IMAGE = 'tejvellank9362/testalways'  // example: 'nginx:latest' or 'ubuntu:20.04'
+    }
+    
+    stages {
+        stage('Pull Image') {
+            steps {
+                bat "docker pull ${DOCKER_IMAGE}"
+            }
+        }
+        
+        stage('Run Container') {
+            steps {
+                bat """
+                    docker run -d ^
+                        --name my-container ^
+                        -p 8080:80 ^
+                        ${DOCKER_IMAGE}
+                """
+            }
+        }
+        
+        stage('Test') {
+            steps {
+                bat """
+                    @REM Wait for container to start
+                    timeout /t 10 /nobreak
+                    
+                    @REM Verify container is running
+                    docker ps | findstr my-container
+                """
+            }
+        }
+    }
+    
+    post {
+        always {
+            bat """
+                docker stop my-container || exit /b 0
+                docker rm my-container || exit /b 0
+            """
+        }
+    }
+}
