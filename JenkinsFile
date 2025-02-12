@@ -2,8 +2,7 @@ pipeline {
     agent any
     
     environment {
-        // Replace this with your Docker Hub image name
-        DOCKER_IMAGE = 'tejvellank9362/testalways'  // example: 'nginx:latest' or 'ubuntu:20.04'
+        DOCKER_IMAGE = 'tejvellank9362/testalways'
     }
     
     stages {
@@ -15,10 +14,11 @@ pipeline {
         
         stage('Run Container') {
             steps {
+                // Use proper port mapping (80 is standard HTTP port)
                 bat """
                     docker run -d ^
                         --name my-container ^
-                        -p 8085:85 ^
+                        -p 8089:80 ^
                         ${DOCKER_IMAGE}
                 """
             }
@@ -26,19 +26,26 @@ pipeline {
         
         stage('Test') {
             steps {
-                bat """
-                    @REM Wait for container to start
-                    timeout /t 10 /nobreak
+                // Use PowerShell's Start-Sleep instead of timeout command
+                bat 'powershell -Command "Start-Sleep -Seconds 10"'
+                
+                // Verify container is running and healthy
+                bat '''
+                    docker ps --filter name=my-container --format "{{.Status}}"
                     
-                    @REM Verify container is running
-                    docker ps | findstr my-container
-                """
+                    REM Test if service is responding
+                    powershell -Command "try { ^
+                        $response = Invoke-WebRequest -Uri http://localhost:8085 -UseBasicParsing; ^
+                        if ($response.StatusCode -eq 200) { exit 0 } else { exit 1 } ^
+                    } catch { exit 1 }"
+                '''
             }
         }
     }
     
     post {
         always {
+            // Clean up container regardless of pipeline outcome
             bat """
                 docker stop my-container || exit /b 0
                 docker rm my-container || exit /b 0
