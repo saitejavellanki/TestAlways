@@ -12,6 +12,23 @@ pipeline {
             }
         }
         
+        stage('Extract Class File') {
+            steps {
+                // Create a temporary container and copy the class file
+                bat """
+                    docker create --name temp-container ${DOCKER_IMAGE}
+                    docker cp temp-container:/app/Hello.class .
+                    docker rm temp-container
+                """
+            }
+        }
+        
+        stage('Archive Artifacts') {
+            steps {
+                archiveArtifacts artifacts: '*.class', followSymlinks: false
+            }
+        }
+        
         stage('Run Container') {
             steps {
                 bat """
