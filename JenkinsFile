@@ -18,7 +18,7 @@ pipeline {
                 bat """
                     docker run -d ^
                         --name my-container ^
-                        -p 8080:80 ^
+                        -p 8085:85 ^
                         ${DOCKER_IMAGE}
                 """
             }
